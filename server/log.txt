@@ -1,0 +1,84 @@
+{
+  "eq": [
+    {
+      "equipmentID": 1,
+      "categoryID": 2,
+      "equipment_name": "Basketball (Spalding)",
+      "description": null,
+      "image_url": null
+    },
+    {
+      "equipmentID": 2,
+      "categoryID": 2,
+      "equipment_name": "Volleyball (Mikasa)",
+      "description": null,
+      "image_url": null
+    },
+    {
+      "equipmentID": 3,
+      "categoryID": 2,
+      "equipment_name": "Badminton Racket",
+      "description": null,
+      "image_url": null
+    },
+    {
+      "equipmentID": 4,
+      "categoryID": 1,
+      "equipment_name": "Table Tennis Paddle",
+      "description": null,
+      "image_url": null
+    },
+    {
+      "equipmentID": 5,
+      "categoryID": 1,
+      "equipment_name": "Soccer Ball",
+      "description": null,
+      "image_url": null
+    },
+    {
+      "equipmentID": 6,
+      "categoryID": 1,
+      "equipment_name": "Golf",
+      "description": null,
+      "image_url": null
+    }
+  ],
+  "ri": [
+    {
+      "itemID": 1,
+      "equipmentID": 1,
+      "total_quantity": 5,
+      "available_quantity": 4
+    },
+    {
+      "itemID": 2,
+      "equipmentID": 2,
+      "total_quantity": 5,
+      "available_quantity": 3
+    },
+    {
+      "itemID": 3,
+      "equipmentID": 3,
+      "total_quantity": 3,
+      "available_quantity": 4
+    },
+    {
+      "itemID": 4,
+      "equipmentID": 4,
+      "total_quantity": 5,
+      "available_quantity": 4
+    },
+    {
+      "itemID": 5,
+      "equipmentID": 5,
+      "total_quantity": 3,
+      "available_quantity": 4
+    },
+    {
+      "itemID": 6,
+      "equipmentID": 6,
+      "total_quantity": 10,
+      "available_quantity": 9
+    }
+  ]
+}
