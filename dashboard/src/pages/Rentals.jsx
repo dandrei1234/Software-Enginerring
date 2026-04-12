@@ -69,8 +69,10 @@ const Rentals = ({ user }) => {
                     <span 
                       className={getStatusClass(rental.borrow_status)}
                       style={
-                        rental.borrow_status === 'Pending' ? { backgroundColor: 'rgba(234, 179, 8, 0.2)', color: '#eab308' } : 
-                        rental.borrow_status === 'Overdue' ? { backgroundColor: '#fee2e2', color: '#991b1b', padding: '4px 8px', borderRadius: '4px' } : {}
+                        rental.borrow_status === 'Pending' ? { backgroundColor: 'rgba(234, 179, 8, 0.2)', color: '#eab308', padding: '4px 8px', borderRadius: '4px' } : 
+                        rental.borrow_status === 'Overdue' ? { backgroundColor: '#fee2e2', color: '#991b1b', padding: '4px 8px', borderRadius: '4px' } : 
+                        rental.borrow_status === 'Approved' ? { backgroundColor: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '4px' } : 
+                        rental.borrow_status === 'Rejected' ? { backgroundColor: '#fee2e2', color: '#991b1b', padding: '4px 8px', borderRadius: '4px' } : {}
                       }
                     >
                       {rental.borrow_status}
@@ -84,13 +86,13 @@ const Rentals = ({ user }) => {
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
                           onClick={() => handleUpdateStatus(rental.rentalID, 'Approved')}
-                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '4px', backgroundColor: 'var(--success-color)', color: 'white', border: 'none', cursor: 'pointer' }}
+                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '4px', backgroundColor: '#22c55e', color: 'white', border: 'none', cursor: 'pointer' }}
                         >
                           Approve
                         </button>
                         <button 
                           onClick={() => handleUpdateStatus(rental.rentalID, 'Rejected')}
-                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '4px', backgroundColor: 'var(--danger-color)', color: 'white', border: 'none', cursor: 'pointer' }}
+                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '4px', backgroundColor: '#ef4444', color: 'white', border: 'none', cursor: 'pointer' }}
                         >
                           Reject
                         </button>

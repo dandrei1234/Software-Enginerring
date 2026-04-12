@@ -20,7 +20,7 @@
 .dashboard-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-  border-color: rgba(56, 189, 248, 0.3);
+  border-color: rgba(0, 123, 255, 0.3);
 }
 
 .dashboard-card h3 {
@@ -105,8 +105,8 @@
   text-transform: uppercase;
 }
 
-.status-available { background-color: rgba(34, 197, 94, 0.2); color: var(--success-color); }
-.status-borrowed { background-color: rgba(239, 68, 68, 0.2); color: var(--danger-color); }
+.status-available { background-color: rgba(0, 123, 255, 0.2); color: var(--success-color); }
+.status-borrowed { background-color: rgba(0, 123, 255, 0.2); color: var(--danger-color); }
 
 /* Auth Form UI */
 .auth-container {
@@ -115,7 +115,7 @@
   justify-content: center;
   height: 100vh;
   width: 100vw;
-  background: linear-gradient(135deg, var(--background-dark) 0%, #1e1b4b 100%);
+  background: linear-gradient(135deg, var(--background-dark) 0%, #cce5ff 100%);
 }
 
 .auth-card {
@@ -161,7 +161,7 @@
 .auth-input:focus {
   outline: none;
   border-color: var(--accent-color);
-  background-color: rgba(56, 189, 248, 0.05);
+  background-color: rgba(0, 123, 255, 0.05);
 }
 
 .auth-error {

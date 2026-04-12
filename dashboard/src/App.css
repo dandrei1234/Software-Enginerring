@@ -1,14 +1,14 @@
 :root {
-  --primary-color: #2563eb;
-  --secondary-color: #3b82f6;
-  --background-dark: #0f172a;
-  --surface-dark: #1e293b;
-  --text-light: #f8fafc;
-  --text-muted: #94a3b8;
-  --accent-color: #38bdf8;
-  --danger-color: #ef4444;
-  --success-color: #22c55e;
-  --border-color: #334155;
+  --primary-color: #0056b3;
+  --secondary-color: #007bff;
+  --background-dark: #ffffff;
+  --surface-dark: #f0f8ff;
+  --text-light: #003366;
+  --text-muted: #4d88ff;
+  --accent-color: #007bff;
+  --danger-color: #0056b3;
+  --success-color: #007bff;
+  --border-color: #cce5ff;
   --font-family: 'Inter', system-ui, sans-serif;
 }
 
@@ -100,12 +100,12 @@ body {
 }
 
 .sidebar a:hover {
-  background-color: rgba(59, 130, 246, 0.1);
+  background-color: rgba(0, 123, 255, 0.1);
   color: var(--text-light);
 }
 
 .sidebar a.active {
-  background-color: rgba(56, 189, 248, 0.1);
+  background-color: rgba(0, 123, 255, 0.1);
   color: var(--accent-color);
   border-right: 3px solid var(--accent-color);
 }
@@ -115,7 +115,7 @@ main {
   flex: 1;
   padding: 32px;
   overflow-y: auto;
-  background: linear-gradient(180deg, #111827 0%, var(--background-dark) 100%);
+  background: linear-gradient(180deg, #f0f8ff 0%, var(--background-dark) 100%);
 }
 
 main h2 {
