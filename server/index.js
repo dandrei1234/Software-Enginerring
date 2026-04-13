@@ -66,9 +66,10 @@ app.get('/api/equipment', async (req, res) => {
   try {
     // Join equipment_tbl with rental_items_tbl to find specific physically available items
     const query = `
-      SELECT e.equipmentID, e.equipment_name, e.description, COALESCE(r.itemID, e.equipmentID) AS itemID, COALESCE(r.available_quantity, 1) AS available_quantity, COALESCE(r.total_quantity, 1) AS total_quantity 
+      SELECT e.equipmentID, e.equipment_name, e.description, c.category_name, COALESCE(r.itemID, e.equipmentID) AS itemID, COALESCE(r.available_quantity, 1) AS available_quantity, COALESCE(r.total_quantity, 1) AS total_quantity 
       FROM equipment_tbl e
       LEFT JOIN rental_items_tbl r ON e.equipmentID = r.equipmentID
+      LEFT JOIN equipment_category_tbl c ON e.categoryID = c.categoryID
     `;
     const [rows] = await pool.query(query);
     res.json(rows);
