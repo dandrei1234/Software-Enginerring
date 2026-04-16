@@ -10,6 +10,9 @@ const Borrow = ({ open, onClose, user }) => {
   const [filterCategory, setFilterCategory] = useState('');
   const navigate = useNavigate();
 
+  const todayDate = new Date();
+  const minDate = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
+
   useEffect(() => {
     if (open) {
       fetch('/api/equipment', { headers: { 'ngrok-skip-browser-warning': 'true' } })
@@ -133,6 +136,7 @@ const Borrow = ({ open, onClose, user }) => {
           onChange={(e) => setDueDate(e.target.value)}
           fullWidth
           required
+          inputProps={{ min: minDate }}
           style={{ marginTop: '20px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}
           InputLabelProps={{ shrink: true, style: { color: '#94a3b8' } }}
           InputProps={{ style: { color: 'white' } }}

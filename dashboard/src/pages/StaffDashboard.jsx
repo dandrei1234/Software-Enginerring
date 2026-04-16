@@ -6,7 +6,7 @@ const StaffDashboard = () => {
   const [rentals, setRentals] = useState([]);
   const [equipments, setEquipments] = useState([]);
   const [isAddEquipmentOpen, setIsAddEquipmentOpen] = useState(false);
-  
+
   const fetchDashboardData = () => {
     // Fetch Rentals
     fetch('/api/rentals', { headers: { 'ngrok-skip-browser-warning': 'true' } })
@@ -42,7 +42,7 @@ const StaffDashboard = () => {
       <div className="dashboard-grid">
         <div className="dashboard-card">
           <h3>Total Equipment</h3>
-          <p style={{ fontSize: '1.5rem', fontWeight: 600, color: '#f8fafc' }}>{totalEquipments}</p>
+          <p style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--accent-color)' }}>{totalEquipments}</p>
           <p>Total items available in the catalog.</p>
         </div>
         <div className="dashboard-card">
@@ -62,9 +62,9 @@ const StaffDashboard = () => {
         </div>
       </div>
 
-      <AddEquipment 
-        open={isAddEquipmentOpen} 
-        onClose={() => setIsAddEquipmentOpen(false)} 
+      <AddEquipment
+        open={isAddEquipmentOpen}
+        onClose={() => setIsAddEquipmentOpen(false)}
         onEquipmentAdded={fetchDashboardData}
       />
     </div>

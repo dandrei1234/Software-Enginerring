@@ -38,6 +38,13 @@ app.post('/api/signup', async (req, res) => {
   const { fullname, email, password } = req.body;
   if (!fullname || !email || !password) return res.status(400).json({ error: "Missing required fields" });
 
+  if (fullname.length > 255) return res.status(400).json({ error: "Full name must not exceed 255 characters" });
+  if (!/^[a-zA-Z\sÑñ]+$/.test(fullname)) return res.status(400).json({ error: "Special characters and numbers are not allowed in Full Name" });
+  
+  if (!email.toLowerCase().endsWith('@smu.edu.ph')) {
+    return res.status(400).json({ error: "Registration is restricted to @smu.edu.ph emails" });
+  }
+
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
@@ -118,6 +125,21 @@ app.post('/api/borrow', auditMiddleware('BORROW_EQUIPMENT'), async (req, res) =>
 
   if (!userID || !itemID || !dueDate) {
     return res.status(400).json({ error: "Missing required fields (userID, itemID, dueDate)" });
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let targetDate;
+  if (dueDate.includes('-')) {
+    const [year, month, day] = dueDate.split('-');
+    targetDate = new Date(year, month - 1, day);
+  } else {
+    targetDate = new Date(dueDate);
+  }
+
+  if (targetDate < today) {
+    return res.status(400).json({ error: "Return date cannot be in the past" });
   }
 
   const connection = await pool.getConnection();
