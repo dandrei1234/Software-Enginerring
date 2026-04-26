@@ -3,6 +3,7 @@ import '../pages.css';
 
 const Rentals = ({ user }) => {
   const [rentals, setRentals] = useState([]);
+  const [selectedConditions, setSelectedConditions] = useState({});
 
   useEffect(() => {
     fetch('/api/rentals', { headers: { 'ngrok-skip-browser-warning': 'true' } })
@@ -11,15 +12,22 @@ const Rentals = ({ user }) => {
       .catch(err => console.error("Failed to fetch rentals:", err));
   }, []);
 
+  const handleConditionChange = (rentalID, value) => {
+    setSelectedConditions(prev => ({ ...prev, [rentalID]: value }));
+  };
+
   const handleUpdateStatus = (rentalID, newStatus) => {
+    const condition = selectedConditions[rentalID] || 
+      (newStatus === 'Approved' ? 'Good' : rentals.find(r => r.rentalID === rentalID)?.condition_status);
+
     fetch(`/api/rentals/${rentalID}/status`, {
       method: 'PUT',
       headers: { 'ngrok-skip-browser-warning': 'true', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus, userID: user?.userID })
+      body: JSON.stringify({ status: newStatus, userID: user?.userID, condition_status: condition })
     })
     .then(res => res.json())
     .then(data => {
-      setRentals(rentals.map(r => r.rentalID === rentalID ? { ...r, borrow_status: newStatus } : r));
+      setRentals(rentals.map(r => r.rentalID === rentalID ? { ...r, borrow_status: newStatus, condition_status: condition } : r));
     })
     .catch(err => console.error("Update failed:", err));
   };
@@ -83,29 +91,53 @@ const Rentals = ({ user }) => {
                   <td>{rental.return_date ? new Date(rental.return_date).toLocaleDateString() : '-'}</td>
                   <td>
                     {rental.borrow_status === 'Pending' && (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button 
-                          onClick={() => handleUpdateStatus(rental.rentalID, 'Approved')}
-                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '4px', backgroundColor: '#22c55e', color: 'white', border: 'none', cursor: 'pointer' }}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <select 
+                          value={selectedConditions[rental.rentalID] || 'Good'} 
+                          onChange={(e) => handleConditionChange(rental.rentalID, e.target.value)}
+                          style={{ padding: '6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #ccc' }}
                         >
-                          Approve
-                        </button>
-                        <button 
-                          onClick={() => handleUpdateStatus(rental.rentalID, 'Rejected')}
-                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '4px', backgroundColor: '#ef4444', color: 'white', border: 'none', cursor: 'pointer' }}
-                        >
-                          Reject
-                        </button>
+                          <option value="New">New</option>
+                          <option value="Good">Good</option>
+                          <option value="Fair">Fair</option>
+                          <option value="Damaged">Damaged</option>
+                        </select>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            onClick={() => handleUpdateStatus(rental.rentalID, 'Approved')}
+                            style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '4px', backgroundColor: '#22c55e', color: 'white', border: 'none', cursor: 'pointer' }}
+                          >
+                            Approve
+                          </button>
+                          <button 
+                            onClick={() => handleUpdateStatus(rental.rentalID, 'Rejected')}
+                            style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '4px', backgroundColor: '#ef4444', color: 'white', border: 'none', cursor: 'pointer' }}
+                          >
+                            Reject
+                          </button>
+                        </div>
                       </div>
                     )}
                     {rental.borrow_status === 'Approved' && (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button 
-                          onClick={() => handleUpdateStatus(rental.rentalID, 'Returned')}
-                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '4px', backgroundColor: '#334155', color: 'white', border: 'none', cursor: 'pointer' }}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <select 
+                          value={selectedConditions[rental.rentalID] || rental.condition_status || 'Good'} 
+                          onChange={(e) => handleConditionChange(rental.rentalID, e.target.value)}
+                          style={{ padding: '6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #ccc' }}
                         >
-                          Mark Returned
-                        </button>
+                          <option value="New">New</option>
+                          <option value="Good">Good</option>
+                          <option value="Fair">Fair</option>
+                          <option value="Damaged">Damaged</option>
+                        </select>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            onClick={() => handleUpdateStatus(rental.rentalID, 'Returned')}
+                            style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '4px', backgroundColor: '#334155', color: 'white', border: 'none', cursor: 'pointer' }}
+                          >
+                            Mark Returned
+                          </button>
+                        </div>
                       </div>
                     )}
                   </td>

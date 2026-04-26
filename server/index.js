@@ -73,7 +73,8 @@ app.get('/api/equipment', async (req, res) => {
   try {
     // Join equipment_tbl with rental_items_tbl to find specific physically available items
     const query = `
-      SELECT e.equipmentID, e.equipment_name, e.description, c.category_name, COALESCE(r.itemID, e.equipmentID) AS itemID, COALESCE(r.available_quantity, 1) AS available_quantity, COALESCE(r.total_quantity, 1) AS total_quantity 
+      SELECT e.equipmentID, e.equipment_name, e.description, c.category_name, COALESCE(r.itemID, e.equipmentID) AS itemID, COALESCE(r.available_quantity, 1) AS available_quantity, COALESCE(r.total_quantity, 1) AS total_quantity,
+      COALESCE((SELECT condition_status FROM rentals_tbl rt WHERE rt.itemID = r.itemID ORDER BY request_date DESC LIMIT 1), 'New') AS condition_status
       FROM equipment_tbl e
       LEFT JOIN rental_items_tbl r ON e.equipmentID = r.equipmentID
       LEFT JOIN equipment_category_tbl c ON e.categoryID = c.categoryID
@@ -203,7 +204,7 @@ app.get('/api/rentals', async (req, res) => {
 
 app.put('/api/rentals/:rentalID/status', auditMiddleware('UPDATE_RENTAL_STATUS'), async (req, res) => {
   const { rentalID } = req.params;
-  const { status, userID } = req.body;
+  const { status, userID, condition_status } = req.body;
   if (!status) return res.status(400).json({ error: "Missing status" });
 
   const connection = await pool.getConnection();
@@ -215,11 +216,22 @@ app.put('/api/rentals/:rentalID/status', auditMiddleware('UPDATE_RENTAL_STATUS')
     const currentStatus = rentalRows[0].borrow_status;
     const itemID = rentalRows[0].itemID;
 
+    let updateQuery = "UPDATE rentals_tbl SET borrow_status = ?";
+    let queryParams = [status];
+
     if (status === 'Returned') {
-      await connection.query("UPDATE rentals_tbl SET borrow_status = ?, return_date = NOW() WHERE rentalID = ?", [status, rentalID]);
-    } else {
-      await connection.query("UPDATE rentals_tbl SET borrow_status = ? WHERE rentalID = ?", [status, rentalID]);
+      updateQuery += ", return_date = NOW()";
     }
+
+    if (condition_status) {
+      updateQuery += ", condition_status = ?";
+      queryParams.push(condition_status);
+    }
+
+    updateQuery += " WHERE rentalID = ?";
+    queryParams.push(rentalID);
+
+    await connection.query(updateQuery, queryParams);
 
 
     if ((currentStatus === 'Pending' || currentStatus === 'Approved') && (status === 'Returned' || status === 'Rejected' || status === 'Cancelled')) {

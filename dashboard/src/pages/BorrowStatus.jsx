@@ -63,7 +63,11 @@ const BorrowStatus = ({ user }) => {
                     <div>Due: {rental.due_date ? new Date(rental.due_date).toLocaleDateString() : 'N/A'}</div>
                   </td>
                   <td style={{ padding: '16px', color: '#64748b', fontSize: '0.875rem', textTransform: 'capitalize' }}>
-                    {rental.condition_status || 'N/A'}
+                    {rental.borrow_status === 'Pending' ? (
+                      <span style={{ color: '#94a3b8', fontStyle: 'italic', textTransform: 'none' }}>Waiting for Staff</span>
+                    ) : (
+                      rental.condition_status || 'N/A'
+                    )}
                   </td>
                   <td style={{ padding: '16px' }}>
                     <span style={{
