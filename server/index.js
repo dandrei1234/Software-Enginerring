@@ -250,6 +250,46 @@ app.put('/api/rentals/:rentalID/status', auditMiddleware('UPDATE_RENTAL_STATUS')
   }
 });
 
+app.put('/api/equipment/:itemID/quantity', auditMiddleware('UPDATE_EQUIPMENT_QUANTITY'), async (req, res) => {
+  const { itemID } = req.params;
+  const { total_quantity } = req.body;
+  
+  if (total_quantity === undefined || total_quantity < 0) {
+    return res.status(400).json({ error: "Invalid quantity" });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      "SELECT total_quantity, available_quantity FROM rental_items_tbl WHERE itemID = ?",
+      [itemID]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+
+    const currentTotal = rows[0].total_quantity || 0;
+    const currentAvailable = rows[0].available_quantity || 0;
+    const borrowed = currentTotal - currentAvailable;
+
+    if (total_quantity < borrowed) {
+      return res.status(400).json({ error: "Total quantity cannot be less than currently borrowed quantity" });
+    }
+
+    const delta = total_quantity - currentTotal;
+    const newAvailable = currentAvailable + delta;
+
+    await pool.query(
+      "UPDATE rental_items_tbl SET total_quantity = ?, available_quantity = ? WHERE itemID = ?",
+      [total_quantity, newAvailable, itemID]
+    );
+
+    res.json({ message: "Equipment quantity updated successfully", total_quantity, available_quantity: newAvailable });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/rentals/:userID', async (req, res) => {
   try {
     const query = `

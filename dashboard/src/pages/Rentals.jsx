@@ -27,7 +27,13 @@ const Rentals = ({ user }) => {
     })
     .then(res => res.json())
     .then(data => {
-      setRentals(rentals.map(r => r.rentalID === rentalID ? { ...r, borrow_status: newStatus, condition_status: condition } : r));
+      const today = new Date().toISOString().split('T')[0];
+      setRentals(rentals.map(r => r.rentalID === rentalID ? { 
+        ...r, 
+        borrow_status: newStatus, 
+        condition_status: condition,
+        return_date: newStatus === 'Returned' ? today : r.return_date
+      } : r));
     })
     .catch(err => console.error("Update failed:", err));
   };

@@ -46,6 +46,17 @@ body {
   z-index: 10;
 }
 
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-logo {
+  width: 34px;
+  height: auto;
+}
+
 .navbar h1 {
   font-size: 1.25rem;
   font-weight: 700;

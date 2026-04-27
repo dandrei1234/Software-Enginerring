@@ -1,9 +1,13 @@
 import React from 'react';
+import logo from '../assets/logo.png';
 
 const Navbar = ({ user, onLogout }) => {
   return (
     <nav className="navbar">
-      <h1>SMU Sport-Rentals</h1>
+      <div className="navbar-brand">
+        <img src={logo} alt="SMU Sport Rentals logo" className="navbar-logo" />
+        <h1>SMU Sport-Rentals</h1>
+      </div>
       <div className="user-info">
         <span>Welcome, {user.fullname}</span>
         <span className="role-badge">{user.role}</span>

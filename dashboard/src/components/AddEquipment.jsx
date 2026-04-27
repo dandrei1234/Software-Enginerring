@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
 
 const AddEquipment = ({ open, onClose, onEquipmentAdded }) => {
@@ -7,10 +7,28 @@ const AddEquipment = ({ open, onClose, onEquipmentAdded }) => {
   const [description, setDescription] = useState('');
   const [totalQuantity, setTotalQuantity] = useState(10);
   const [error, setError] = useState(null);
+  const [existingEquipment, setExistingEquipment] = useState([]);
+
+  useEffect(() => {
+    if (open) {
+      fetch('/api/equipment', { headers: { 'ngrok-skip-browser-warning': 'true' } })
+        .then(res => res.json())
+        .then(data => setExistingEquipment(data))
+        .catch(err => console.error("Failed to fetch equipment:", err));
+    }
+  }, [open]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!equipmentName) return;
+
+    const equipmentNameLower = equipmentName.toLowerCase().trim();
+    const isDuplicate = existingEquipment.some(eq => eq.equipment_name.toLowerCase().trim() === equipmentNameLower);
+
+    if (isDuplicate) {
+      setError(`"${equipmentName}" already exists in the system. Please use a different name or edit the existing equipment.`);
+      return;
+    }
 
     fetch('/api/equipment', {
       method: 'POST',
@@ -30,6 +48,7 @@ const AddEquipment = ({ open, onClose, onEquipmentAdded }) => {
       setEquipmentName('');
       setDescription('');
       setTotalQuantity(10);
+      setError(null);
       onEquipmentAdded();
       onClose();
     })

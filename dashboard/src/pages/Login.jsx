@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import logo from '../assets/logo.png';
 import '../pages.css';
+
 
 const Login = ({ setUser }) => {
   const [email, setEmail] = useState('');
@@ -40,6 +42,7 @@ const Login = ({ setUser }) => {
   return (
     <div className="auth-container">
       <div className="auth-card">
+        <img src={logo} alt="SMU Sport Rentals logo" className="auth-logo" />
         <h2>Welcome Back</h2>
         <p>Sign in to access your dashboard</p>
         
