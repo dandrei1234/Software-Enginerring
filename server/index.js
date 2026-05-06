@@ -8,6 +8,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Initialize Database Tables
+const initDB = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_requests_tbl (
+        requestID INT AUTO_INCREMENT PRIMARY KEY,
+        userID INT NOT NULL,
+        new_password_hash VARCHAR(255) NOT NULL,
+        status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+        request_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (userID) REFERENCES users_tbl(userID) ON DELETE CASCADE
+      )
+    `);
+    console.log("Database tables initialized");
+  } catch (err) {
+    console.error("Database initialization failed:", err);
+  }
+};
+initDB();
+
 // ----------------------------------------------------
 // AUTHENTICATION
 // ----------------------------------------------------
@@ -45,6 +65,12 @@ app.post('/api/signup', async (req, res) => {
     return res.status(400).json({ error: "Registration is restricted to @smu.edu.ph emails" });
   }
 
+  // Validate password pattern
+  const passwordRequirements = /(?=.*[A-Z])(?=.*\d)/;
+  if (!passwordRequirements.test(password)) {
+    return res.status(400).json({ error: "Password must contain at least one uppercase letter and numbers" });
+  }
+
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
@@ -61,6 +87,108 @@ app.post('/api/signup', async (req, res) => {
     } else {
       res.status(500).json({ error: err.message });
     }
+  }
+});
+
+app.post('/api/reset-password', async (req, res) => {
+  const { email, newPassword, confirmPassword } = req.body;
+  if (!email || !newPassword || !confirmPassword) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ error: "Passwords do not match" });
+  }
+
+  if (!email.toLowerCase().endsWith('@smu.edu.ph')) {
+    return res.status(400).json({ error: "Please use your SMU email address (@smu.edu.ph)" });
+  }
+
+  // Validate password pattern
+  const passwordRequirements = /(?=.*[A-Z])(?=.*\d)/;
+  if (!passwordRequirements.test(newPassword)) {
+    return res.status(400).json({ error: "Password must contain at least one uppercase letter and numbers" });
+  }
+
+  try {
+    // Check if user exists
+    const [rows] = await pool.query("SELECT userID FROM users_tbl WHERE email = ?", [email]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "User with this email does not exist" });
+    }
+
+    const userID = rows[0].userID;
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Instead of updating users_tbl directly, insert into requests table
+    // First, clear any existing pending requests for this user
+    await pool.query("DELETE FROM password_reset_requests_tbl WHERE userID = ? AND status = 'Pending'", [userID]);
+    
+    await pool.query(
+      "INSERT INTO password_reset_requests_tbl (userID, new_password_hash) VALUES (?, ?)",
+      [userID, hashedPassword]
+    );
+
+    logAction(userID, 'PASSWORD_RESET_REQUEST', 'User submitted a password reset request');
+    res.json({ message: "Request submitted! Please wait for admin/staff approval before you can use your new password." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- New Routes for Staff Approval ---
+
+app.get('/api/password-reset-requests', async (req, res) => {
+  try {
+    const query = `
+      SELECT pr.requestID, pr.request_date, u.fullname, u.email 
+      FROM password_reset_requests_tbl pr
+      JOIN users_tbl u ON pr.userID = u.userID
+      WHERE pr.status = 'Pending'
+      ORDER BY pr.request_date DESC
+    `;
+    const [rows] = await pool.query(query);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/password-reset-requests/:requestID/approve', auditMiddleware('APPROVE_PASSWORD_RESET'), async (req, res) => {
+  const { requestID } = req.params;
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // 1. Get the request details
+    const [reqRows] = await connection.query("SELECT userID, new_password_hash FROM password_reset_requests_tbl WHERE requestID = ?", [requestID]);
+    if (reqRows.length === 0) throw new Error("Request not found");
+
+    const { userID, new_password_hash } = reqRows[0];
+
+    // 2. Update the user's password
+    await connection.query("UPDATE users_tbl SET password = ? WHERE userID = ?", [new_password_hash, userID]);
+
+    // 3. Mark request as approved
+    await connection.query("UPDATE password_reset_requests_tbl SET status = 'Approved' WHERE requestID = ?", [requestID]);
+
+    await connection.commit();
+    res.json({ message: "Password reset approved and updated successfully" });
+  } catch (err) {
+    await connection.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    connection.release();
+  }
+});
+
+app.post('/api/password-reset-requests/:requestID/reject', auditMiddleware('REJECT_PASSWORD_RESET'), async (req, res) => {
+  const { requestID } = req.params;
+  try {
+    await pool.query("UPDATE password_reset_requests_tbl SET status = 'Rejected' WHERE requestID = ?", [requestID]);
+    res.json({ message: "Password reset request rejected" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -309,6 +437,59 @@ app.get('/api/rentals/:userID', async (req, res) => {
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/rentals/:rentalID/cancel', async (req, res) => {
+  const { rentalID } = req.params;
+  const { userID } = req.body;
+
+  if (!userID) return res.status(400).json({ error: "Missing userID" });
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    
+    // 1. Verify ownership and status
+    const [rows] = await connection.query(
+      "SELECT itemID, borrow_status, userID FROM rentals_tbl WHERE rentalID = ? FOR UPDATE", 
+      [rentalID]
+    );
+
+    if (rows.length === 0) return res.status(404).json({ error: "Rental not found" });
+    
+    // Security check: only the student who requested it can cancel it here
+    if (rows[0].userID !== parseInt(userID)) {
+       return res.status(403).json({ error: "Unauthorized: You can only cancel your own requests" });
+    }
+    
+    const currentStatus = rows[0].borrow_status;
+    if (currentStatus !== 'Pending' && currentStatus !== 'Approved') {
+       return res.status(400).json({ error: `Cannot cancel a request that is already ${currentStatus}` });
+    }
+
+    // 2. Update status
+    await connection.query("UPDATE rentals_tbl SET borrow_status = 'Cancelled' WHERE rentalID = ?", [rentalID]);
+
+    // 3. Return item to available inventory
+    if (rows[0].itemID) {
+      await connection.query(
+        "UPDATE rental_items_tbl SET available_quantity = available_quantity + 1 WHERE itemID = ?", 
+        [rows[0].itemID]
+      );
+    }
+
+    await connection.commit();
+    
+    // Log the cancellation
+    logAction(userID, 'CANCEL_BORROW', `Student cancelled borrow request for rental ID ${rentalID}`);
+    
+    res.json({ message: "Request cancelled successfully", rentalID });
+  } catch (err) {
+    await connection.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    connection.release();
   }
 });
 

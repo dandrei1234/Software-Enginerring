@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import '../pages.css';
 import AddEquipment from '../components/AddEquipment';
+import AccountRequests from '../components/AccountRequests';
 
-const StaffDashboard = () => {
+const StaffDashboard = ({ user }) => {
   const [rentals, setRentals] = useState([]);
   const [equipments, setEquipments] = useState([]);
   const [isAddEquipmentOpen, setIsAddEquipmentOpen] = useState(false);
   const [editingItemID, setEditingItemID] = useState(null);
   const [editingQuantity, setEditingQuantity] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchDashboardData = () => {
     // Fetch Rentals
@@ -46,7 +48,7 @@ const StaffDashboard = () => {
     fetch(`/api/equipment/${itemID}/quantity`, {
       method: 'PUT',
       headers: { 'ngrok-skip-browser-warning': 'true', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ total_quantity: parseInt(editingQuantity) })
+      body: JSON.stringify({ total_quantity: parseInt(editingQuantity), userID: user.userID })
     })
     .then(res => res.json())
     .then(data => {
@@ -99,7 +101,16 @@ const StaffDashboard = () => {
         </div>
       </div>
 
-      <h3 style={{ marginTop: '32px' }}>Equipment Inventory</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '32px' }}>
+        <h3>Equipment Inventory</h3>
+        <input 
+          type="text" 
+          placeholder="Search equipment..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-dark)', color: 'var(--text-light)', width: '250px' }}
+        />
+      </div>
       <div className="table-container">
         <table className="data-table">
           <thead>
@@ -113,12 +124,14 @@ const StaffDashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {equipments.length === 0 ? (
+            {equipments.filter(eq => eq.equipment_name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center' }}>No equipment found. Add equipment to get started.</td>
+                <td colSpan="6" style={{ textAlign: 'center' }}>No equipment found.</td>
               </tr>
             ) : (
-              equipments.map(eq => {
+              equipments
+                .filter(eq => eq.equipment_name.toLowerCase().includes(searchTerm.toLowerCase()))
+                .map(eq => {
                 const borrowed = (eq.total_quantity || 0) - (eq.available_quantity || 0);
                 return (
                   <tr key={eq.itemID}>
@@ -171,8 +184,11 @@ const StaffDashboard = () => {
           </tbody>
         </table>
       </div>
+      
+      <AccountRequests user={user} />
 
       <AddEquipment
+        user={user}
         open={isAddEquipmentOpen}
         onClose={() => setIsAddEquipmentOpen(false)}
         onEquipmentAdded={fetchDashboardData}

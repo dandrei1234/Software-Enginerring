@@ -4,6 +4,7 @@ import '../pages.css';
 const Rentals = ({ user }) => {
   const [rentals, setRentals] = useState([]);
   const [selectedConditions, setSelectedConditions] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetch('/api/rentals', { headers: { 'ngrok-skip-browser-warning': 'true' } })
@@ -11,6 +12,12 @@ const Rentals = ({ user }) => {
       .then(data => setRentals(data))
       .catch(err => console.error("Failed to fetch rentals:", err));
   }, []);
+
+  const filteredRentals = rentals.filter(r => 
+    (r.student_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (r.equipment_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (r.borrow_status || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleConditionChange = (rentalID, value) => {
     setSelectedConditions(prev => ({ ...prev, [rentalID]: value }));
@@ -50,8 +57,17 @@ const Rentals = ({ user }) => {
   };
 
   return (
-    <div>
-      <h2>Manage Rentals</h2>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>Manage Rentals</h2>
+        <input 
+          type="text" 
+          placeholder="Search student or item..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-dark)', color: 'var(--text-light)', width: '250px' }}
+        />
+      </div>
       <div className="table-container">
         <table className="data-table">
           <thead>
@@ -68,12 +84,12 @@ const Rentals = ({ user }) => {
             </tr>
           </thead>
           <tbody>
-            {rentals.length === 0 ? (
+            {filteredRentals.length === 0 ? (
               <tr>
                 <td colSpan="9" style={{ textAlign: 'center' }}>No rentals found.</td>
               </tr>
             ) : (
-              rentals.map(rental => (
+              filteredRentals.map(rental => (
                 <tr key={rental.rentalID}>
                   <td>{rental.rentalID}</td>
                   <td>{rental.student_name}</td>

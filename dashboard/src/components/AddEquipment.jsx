@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
 
-const AddEquipment = ({ open, onClose, onEquipmentAdded }) => {
+const AddEquipment = ({ user, open, onClose, onEquipmentAdded }) => {
   const [equipmentName, setEquipmentName] = useState('');
   const [categoryID, setCategoryID] = useState(1); // 1 = Ball Games, 2 = Racket Sports
   const [description, setDescription] = useState('');
@@ -37,7 +37,8 @@ const AddEquipment = ({ open, onClose, onEquipmentAdded }) => {
         equipment_name: equipmentName,
         categoryID,
         description,
-        total_quantity: totalQuantity
+        total_quantity: totalQuantity,
+        userID: user?.userID
       })
     })
     .then(async res => {

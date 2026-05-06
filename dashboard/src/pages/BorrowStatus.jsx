@@ -25,6 +25,28 @@ const BorrowStatus = ({ user }) => {
     }
   };
 
+  const handleCancel = (rentalID) => {
+    if (!window.confirm("Are you sure you want to cancel this request?")) return;
+
+    fetch(`/api/rentals/${rentalID}/cancel`, {
+      method: 'PUT',
+      headers: { 
+        'ngrok-skip-browser-warning': 'true',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ userID: user.userID })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        alert(data.error);
+      } else {
+        setRentals(rentals.map(r => r.rentalID === rentalID ? { ...r, borrow_status: 'Cancelled' } : r));
+      }
+    })
+    .catch(err => console.error("Cancel failed:", err));
+  };
+
   return (
     <div>
       <h2 style={{ marginBottom: '20px' }}>My Borrow Status</h2>
@@ -37,12 +59,13 @@ const BorrowStatus = ({ user }) => {
               <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dates</th>
               <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Condition</th>
               <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
+              <th style={{ padding: '12px 16px', fontSize: '0.75rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {rentals.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>You have no borrow requests yet.</td>
+                <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>You have no borrow requests yet.</td>
               </tr>
             ) : (
               rentals.map(rental => (
@@ -79,6 +102,28 @@ const BorrowStatus = ({ user }) => {
                     }}>
                       {rental.borrow_status}
                     </span>
+                  </td>
+                  <td style={{ padding: '16px' }}>
+                    {(rental.borrow_status === 'Pending' || rental.borrow_status === 'Approved') && (
+                      <button 
+                        onClick={() => handleCancel(rental.rentalID)}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '0.75rem',
+                          borderRadius: '6px',
+                          backgroundColor: '#fee2e2',
+                          color: '#991b1b',
+                          border: '1px solid #fecaca',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fecaca' }}
+                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2' }}
+                      >
+                        Cancel Request
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

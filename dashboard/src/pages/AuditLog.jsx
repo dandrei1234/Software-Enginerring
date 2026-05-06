@@ -3,6 +3,7 @@ import '../pages.css';
 
 const AuditLog = () => {
   const [logs, setLogs] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetch('/api/audit-logs', { headers: { 'ngrok-skip-browser-warning': 'true' } })
@@ -11,9 +12,24 @@ const AuditLog = () => {
       .catch(err => console.error("Failed to fetch audit logs:", err));
   }, []);
 
+  const filteredLogs = logs.filter(log => 
+    (log.fullname || 'System').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.action_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.action_details.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div>
-      <h2>System Audit Logs</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>System Audit Logs</h2>
+        <input 
+          type="text" 
+          placeholder="Search logs..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-dark)', color: 'var(--text-light)', width: '250px' }}
+        />
+      </div>
       <div className="table-container">
         <table className="data-table">
           <thead>
@@ -26,12 +42,12 @@ const AuditLog = () => {
             </tr>
           </thead>
           <tbody>
-            {logs.length === 0 ? (
+            {filteredLogs.length === 0 ? (
               <tr>
                 <td colSpan="5" style={{ textAlign: 'center' }}>No logs found.</td>
               </tr>
             ) : (
-              logs.map(log => (
+              filteredLogs.map(log => (
                 <tr key={log.logID}>
                   <td>{log.logID}</td>
                   <td style={{ fontWeight: 600 }}>{log.fullname || 'System'}</td>

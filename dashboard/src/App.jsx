@@ -38,7 +38,7 @@ function App() {
               <Routes>
                 {user.role === 'staff' ? (
                   <>
-                    <Route path="/staff" element={<StaffDashboard />} />
+                    <Route path="/staff" element={<StaffDashboard user={user} />} />
                     <Route path="/rentals" element={<Rentals user={user} />} />
                     <Route path="/audit-logs" element={<AuditLog />} />
                     <Route path="*" element={<Navigate to="/staff" />} />
