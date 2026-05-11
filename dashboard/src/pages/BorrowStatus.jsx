@@ -104,7 +104,7 @@ const BorrowStatus = ({ user }) => {
                     </span>
                   </td>
                   <td style={{ padding: '16px' }}>
-                    {(rental.borrow_status === 'Pending' || rental.borrow_status === 'Approved') && (
+                    {rental.borrow_status === 'Pending' && (
                       <button 
                         onClick={() => handleCancel(rental.rentalID)}
                         style={{

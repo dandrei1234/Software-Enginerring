@@ -8,20 +8,30 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// In-memory store for password reset requests to avoid using a database table
+// This matches the ERD which does not have a password_reset_requests_tbl
+const passwordResetRequests = new Map();
+let resetRequestIdCounter = 1;
+
+// In-memory store for notifications (FR10) to avoid using a database table
+let systemNotifications = [];
+let notificationIdCounter = 1;
+
+function addNotification(userID, message) {
+  systemNotifications.push({
+    id: notificationIdCounter++,
+    userID: parseInt(userID),
+    message: message,
+    timestamp: new Date()
+  });
+}
+
 // Initialize Database Tables
 const initDB = async () => {
   try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS password_reset_requests_tbl (
-        requestID INT AUTO_INCREMENT PRIMARY KEY,
-        userID INT NOT NULL,
-        new_password_hash VARCHAR(255) NOT NULL,
-        status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
-        request_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userID) REFERENCES users_tbl(userID) ON DELETE CASCADE
-      )
-    `);
-    console.log("Database tables initialized");
+    // Drop the table if it exists so it doesn't clutter the database anymore
+    await pool.query("DROP TABLE IF EXISTS password_reset_requests_tbl");
+    console.log("Database initialized (and removed password_reset_requests_tbl to match ERD)");
   } catch (err) {
     console.error("Database initialization failed:", err);
   }
@@ -120,14 +130,22 @@ app.post('/api/reset-password', async (req, res) => {
     const userID = rows[0].userID;
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Instead of updating users_tbl directly, insert into requests table
+    // Instead of updating users_tbl directly, insert into in-memory requests map
     // First, clear any existing pending requests for this user
-    await pool.query("DELETE FROM password_reset_requests_tbl WHERE userID = ? AND status = 'Pending'", [userID]);
+    for (const [key, value] of passwordResetRequests.entries()) {
+      if (value.userID === userID && value.status === 'Pending') {
+        passwordResetRequests.delete(key);
+      }
+    }
     
-    await pool.query(
-      "INSERT INTO password_reset_requests_tbl (userID, new_password_hash) VALUES (?, ?)",
-      [userID, hashedPassword]
-    );
+    const requestID = resetRequestIdCounter++;
+    passwordResetRequests.set(requestID.toString(), {
+      requestID: requestID,
+      userID: userID,
+      new_password_hash: hashedPassword,
+      status: 'Pending',
+      request_date: new Date()
+    });
 
     logAction(userID, 'PASSWORD_RESET_REQUEST', 'User submitted a password reset request');
     res.json({ message: "Request submitted! Please wait for admin/staff approval before you can use your new password." });
@@ -140,15 +158,24 @@ app.post('/api/reset-password', async (req, res) => {
 
 app.get('/api/password-reset-requests', async (req, res) => {
   try {
-    const query = `
-      SELECT pr.requestID, pr.request_date, u.fullname, u.email 
-      FROM password_reset_requests_tbl pr
-      JOIN users_tbl u ON pr.userID = u.userID
-      WHERE pr.status = 'Pending'
-      ORDER BY pr.request_date DESC
-    `;
-    const [rows] = await pool.query(query);
-    res.json(rows);
+    // Fetch user details for each pending request in memory
+    const pendingRequests = [];
+    for (const reqData of passwordResetRequests.values()) {
+      if (reqData.status === 'Pending') {
+        const [userRows] = await pool.query("SELECT fullname, email FROM users_tbl WHERE userID = ?", [reqData.userID]);
+        if (userRows.length > 0) {
+          pendingRequests.push({
+            requestID: reqData.requestID,
+            request_date: reqData.request_date,
+            fullname: userRows[0].fullname,
+            email: userRows[0].email
+          });
+        }
+      }
+    }
+    // Sort by date descending
+    pendingRequests.sort((a, b) => b.request_date - a.request_date);
+    res.json(pendingRequests);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -160,17 +187,18 @@ app.post('/api/password-reset-requests/:requestID/approve', auditMiddleware('APP
   try {
     await connection.beginTransaction();
 
-    // 1. Get the request details
-    const [reqRows] = await connection.query("SELECT userID, new_password_hash FROM password_reset_requests_tbl WHERE requestID = ?", [requestID]);
-    if (reqRows.length === 0) throw new Error("Request not found");
+    // 1. Get the request details from memory
+    const reqData = passwordResetRequests.get(requestID.toString());
+    if (!reqData || reqData.status !== 'Pending') throw new Error("Request not found or already processed");
 
-    const { userID, new_password_hash } = reqRows[0];
+    const { userID, new_password_hash } = reqData;
 
     // 2. Update the user's password
     await connection.query("UPDATE users_tbl SET password = ? WHERE userID = ?", [new_password_hash, userID]);
 
-    // 3. Mark request as approved
-    await connection.query("UPDATE password_reset_requests_tbl SET status = 'Approved' WHERE requestID = ?", [requestID]);
+    // 3. Mark request as approved in memory
+    reqData.status = 'Approved';
+    passwordResetRequests.set(requestID.toString(), reqData);
 
     await connection.commit();
     res.json({ message: "Password reset approved and updated successfully" });
@@ -185,7 +213,11 @@ app.post('/api/password-reset-requests/:requestID/approve', auditMiddleware('APP
 app.post('/api/password-reset-requests/:requestID/reject', auditMiddleware('REJECT_PASSWORD_RESET'), async (req, res) => {
   const { requestID } = req.params;
   try {
-    await pool.query("UPDATE password_reset_requests_tbl SET status = 'Rejected' WHERE requestID = ?", [requestID]);
+    const reqData = passwordResetRequests.get(requestID.toString());
+    if (reqData) {
+      reqData.status = 'Rejected';
+      passwordResetRequests.set(requestID.toString(), reqData);
+    }
     res.json({ message: "Password reset request rejected" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -338,7 +370,7 @@ app.put('/api/rentals/:rentalID/status', auditMiddleware('UPDATE_RENTAL_STATUS')
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const [rentalRows] = await connection.query("SELECT itemID, borrow_status FROM rentals_tbl WHERE rentalID = ? FOR UPDATE", [rentalID]);
+    const [rentalRows] = await connection.query("SELECT itemID, borrow_status, userID FROM rentals_tbl WHERE rentalID = ? FOR UPDATE", [rentalID]);
     if (rentalRows.length === 0) throw new Error("Rental not found");
 
     const currentStatus = rentalRows[0].borrow_status;
@@ -369,6 +401,17 @@ app.put('/api/rentals/:rentalID/status', auditMiddleware('UPDATE_RENTAL_STATUS')
     }
 
     await connection.commit();
+    
+    // Send Notification
+    const studentID = rentalRows[0].userID;
+    if (status === 'Approved') {
+      addNotification(studentID, `Your rental request (ID: ${rentalID}) has been Approved!`);
+    } else if (status === 'Rejected') {
+      addNotification(studentID, `Your rental request (ID: ${rentalID}) has been Rejected.`);
+    } else if (status === 'Returned') {
+      addNotification(studentID, `Your rented equipment (ID: ${rentalID}) has been successfully returned.`);
+    }
+
     res.json({ message: "Status updated successfully" });
   } catch (err) {
     await connection.rollback();
@@ -506,6 +549,43 @@ app.get('/api/audit-logs', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ----------------------------------------------------
+// NOTIFICATIONS API
+// ----------------------------------------------------
+
+app.get('/api/notifications/:userID', async (req, res) => {
+  const userID = parseInt(req.params.userID);
+
+  try {
+    // Dynamically check for Overdue items to satisfy FR10 completely
+    const [overdueRows] = await pool.query(
+      "SELECT rentalID FROM rentals_tbl WHERE userID = ? AND borrow_status = 'Approved' AND due_date < CURDATE()", 
+      [userID]
+    );
+    
+    overdueRows.forEach(row => {
+      const msg = `WARNING: Your rented equipment (ID: ${row.rentalID}) is Overdue! Please return it immediately.`;
+      // Only add if we haven't already added this exact warning
+      const alreadyNotified = systemNotifications.some(n => n.userID === userID && n.message === msg);
+      if (!alreadyNotified) {
+        addNotification(userID, msg);
+      }
+    });
+  } catch (err) {
+    console.error("Failed to check for overdue items:", err);
+  }
+
+  const userNotifs = systemNotifications.filter(n => n.userID === userID);
+  userNotifs.sort((a, b) => b.timestamp - a.timestamp); // newest first
+  res.json(userNotifs);
+});
+
+app.delete('/api/notifications/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  systemNotifications = systemNotifications.filter(n => n.id !== id);
+  res.json({ success: true });
 });
 
 const PORT = 1337;

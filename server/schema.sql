@@ -12,16 +12,6 @@ CREATE TABLE `users_tbl` (
   UNIQUE KEY `email` (`email`)
 );
 
-CREATE TABLE `password_reset_requests_tbl` (
-  `requestID` int NOT NULL AUTO_INCREMENT,
-  `userID` int NOT NULL,
-  `new_password_hash` varchar(255) NOT NULL,
-  `status` enum('Pending','Approved','Rejected') DEFAULT 'Pending',
-  `request_date` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`requestID`),
-  KEY `userID` (`userID`),
-  CONSTRAINT `password_reset_requests_tbl_ibfk_1` FOREIGN KEY (`userID`) REFERENCES `users_tbl` (`userID`) ON DELETE CASCADE
-);
 
 CREATE TABLE `equipment_category_tbl` (
   `categoryID` int NOT NULL AUTO_INCREMENT,
