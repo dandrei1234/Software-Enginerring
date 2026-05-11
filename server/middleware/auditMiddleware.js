@@ -12,8 +12,6 @@ const logAction = async (userID, actionType, actionDetails) => {
 const auditMiddleware = (actionType) => {
   return async (req, res, next) => {
     res.on('finish', () => {
-      // Typically userID would be injected into req.user by an auth middleware. 
-      // For now, we manually pass it from body.userID for POST requests, or default to null.
       const userID = req.body?.userID || null;
       const details = `Action performed: ${actionType}. Status: ${res.statusCode}`;
       logAction(userID, actionType, details);
